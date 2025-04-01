@@ -8,183 +8,114 @@ const apiService = require('./src/services/producto.service.js')
 const service = new apiService();
 const consultaService = require('./src/services/consulta.service.js')
 const consulta = new consultaService();
+ 
+const io = require('socket.io-client');
+const socket = io('http://localhost:5000');
 
-/*fetch('https://api.ejemplo.com/datos')
-  .then(response => response.json())
-  .then(data => {
-    // Manipular los datos recibidos de la API
-    console.log(data);
-  })
-  .catch(error => console.error('Error al consumir la API: ', error));*/
+// Variable para almacenar el historial de conversación
+let conversationContext = {
+  history: [],
+  lastInteraction: null,
+  userData: {}
+};
 
-let resRequisito;
-let item1=[];
-let item2=[];
-let idProducto, tipoInmueble ;
-let arr;
-    const flowSecundario = addKeyword(['']).addAnswer([
-      
-      '📄 Aquí tenemos el flujo secundario'],null,
-       async (ctx) => {
-        console.log('ingreso al flujo dos')
-        console.log(ctx)
+// Función principal que maneja toda la conversación
+const chatHandler = addKeyword([])
+  .addAction(
+    { capture: true },
+    async (ctx, { flowDynamic, state }) => {
+      try {
+        // Actualizar contexto con el nuevo mensaje
+        conversationContext.history.push({
+          user: ctx.body,
+          timestamp: new Date().toISOString()
+        });
+        conversationContext.lastInteraction = 'user';
 
-        const numeroDeWhatsapp = ctx.from 
-        mensajeRecibido = ctx.body 
-        //consulta.consultaDescripcion(mensajeRecibido);
-        consulta.consultaDescripcion(mensajeRecibido).then(val =>{return val} )
-       
-
-      })
-
-
-
-    
-
-    const flowDocs = addKeyword(['Info', 'informacion', '2']).addAnswer(
-      ['📄 Claro que sí, cuéntame en qué inmueble estás interesado, ¿en qué ubicacion lo requiere?'],
-      
-      {capture:true  },
-      
-      async (ctx,{flowDynamic}) =>{
+        // Enviar mensaje al servidor Python con el contexto
+        const payload = {
+          text: ctx.body,
+          context: conversationContext
+        };
         
-        const ubicacion=ctx.body;
-        const respuesta= await consulta.consultaUbicacion(ubicacion);
-        ///const mapeoDeLista = respuesta.map((item) => item.idproducto).join(',')
-        //const mapeoDeLista2 = respuesta.map((item) => item.tipoInmueble).join(',')
-        respuesta.forEach(objeto => {
-          item1.push(`ID del Inmueble: ${objeto.idproducto}`);
-          item1.push(`Tipo de Inmueble: ${objeto.tipoInmueble}`);
-         // item1.push(`Tipo de Inmueble: ${objeto.foto}`);
-         // item2.push(item1);
-         console.log(item1);
-      })
-     /* for (let i = 0; i < item1.length; i+=2) {
-        idProducto = item1[i].split(":")[1].trim(); // Extraer el valor después de ":"
-        tipoInmueble = item1[i + 1].split(":")[1].trim(); // Extraer el valor después de ":"
-        arr=[`ID del Producto: ${idProducto}`,`\n Tipo de Inmueble: ${tipoInmueble}`];
-        //console.log(`ID del Producto: ${idProducto}, Tipo de Inmueble: ${tipoInmueble}`);
-       // [`ID del Producto: ${idProducto}`,`\n Tipo de Inmueble: ${tipoInmueble}`]
-        
-        console.log(arr);
-        
-      }*/
-    
-      return await flowDynamic(item1);
-       
-        
-    })
-      
-      .addAnswer(
-       
-        [ '🙌 Por favor envia el codigo del producto para brindarte mas detalles?', 'si desea regresar al inicio escribe *menu* '],
-        {capture:true},
-        
-        async (ctx,{flowDynamic, endflow}) =>{
-          if(ctx.body=='menu'){
-            return endflow([flowPrincipal]);
-          }else{
-         const codigo=ctx.body;
-         const respuesta= await consulta.findid(codigo);
-         respuesta.forEach(objeto => {
-          res1=(`ID del Inmueble: ${objeto.idproducto}`);
-          res2=(`Tipo de Inmueble: ${objeto.tipoInmueble}`);
-          res3=(`Descripción: ${objeto.descripcion}`);
-          // ... imprimir más propiedades según sea necesario
-          
-         } )
-        }
-        return  await flowDynamic([res1,res2,res3]);
-         
-        })
+        socket.emit('message', payload);
+        console.log('Mensaje enviado con contexto:', payload);
 
-        .addAnswer(
-       
-          [ '🙌 Si estas interesado en inmueble envia la palabra *Si* de lo contrario envia la palabra *No*? '],
-          {capture:true},
-          
-          async (ctx,{flowDynamic, endflow}) =>{
-            if(ctx.body=='No'){
-              return endflow([flowPrincipal]);
-            }
-         
-          return  await flowDynamic(['Elige una opcion para enviarte los requisitos', '*pensionado*','*empleado*','*independiente*']);
-           
-          })
-          .addAnswer(
-       
-            ['Ennvia la opcion mas acorde'],
-            {capture:true},
+        // Esperar respuesta del servidor Python
+        const respuesta = await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            socket.off('response');
+            reject(new Error('Tiempo de espera agotado'));
+          }, 20000);
+
+          socket.once('response', (data) => {
+            clearTimeout(timeout);
             
-            async (ctx,{flowDynamic, endflow}) =>{
-             console.log(ctx.body,ctx);
-              if(ctx.body=='pensionado'||ctx.body== '1'){
-                 resRequisito='Desprendibles de la mesada, Cédulas y un codeudor con estabilidad laboral o con propiedad raíz';
-              }else if(ctx.body=='empleado'||ctx.body=='2'){
-                 resRequisito='Carta Laboral, últimos desprendibles de pago, cédulas y un codeudor con estabilidad laboral o con propiedad raíz'
-              }else if(ctx.body=='independiente'||ctx.body=='3'){
-                 resRequisito='Cámara de comercio o RUT, extractos bancarios, cédulas y un codeudor con estabilidad laboral o con propiedad raíz'
-              }
-           console.log(resRequisito);
-            return  await flowDynamic(resRequisito);
-             
-            })
-     
-  
-  
-  const flowTuto = addKeyword(['tutorial', 'tuto']).addAnswer(
-      [
-          '🙌 Aquí encontras un ejemplo rapido',
-          'https://bot-whatsapp.netlify.app/docs/example/',
-          '\n*2* Para siguiente paso.',
-      ],
-      null,
-      null,
-      [flowSecundario]
-  )
-  
-  const flowGracias = addKeyword(['gracias', 'grac']).addAnswer(
-      [
-          '🚀 Puedes aportar tu granito de arena a este proyecto',
-          '[*opencollective*] https://opencollective.com/bot-whatsapp',
-          '[*buymeacoffee*] https://www.buymeacoffee.com/leifermendez',
-          '[*patreon*] https://www.patreon.com/leifermendez',
-          '\n*2* Para siguiente paso.',
-      ],
-      null,
-      null,
-      [flowSecundario]
-  )
-  
-  const flowDiscord = addKeyword(['discord']).addAnswer(
-      ['🤪 Únete al discord', 'https://link.codigoencasa.com/DISCORD', '\n*2* Para siguiente paso.'],
-      null,
-      null,
-      [flowSecundario]
-  )
-  
-  const flowPrincipal = addKeyword(['hola', 'ole', 'alo'])
-      .addAnswer('🙌 Hola bienvenido a este *Chatbot*')
-      .addAnswer(
-          [
-              'te comparto los siguientes links de interes sobre nuestra inmobiliaria',
-              '👉 *Info* para ver la informacion del inmueble',
-              '👉 *Dis*  para ver los inmuebles disponibles',
-              '👉 *Nos*  para ver la infomacion de nuestra empresa',
-               //'la ubicacion es:'+ datos.precio,
-              
-          ],
-          null,
-          null,
-          [flowDocs, flowGracias, flowTuto, flowDiscord]
-          
-      )
+            // Actualizar contexto con la respuesta
+            conversationContext.history.push({
+              bot: data.text,
+              timestamp: new Date().toISOString()
+            });
+            conversationContext.lastInteraction = 'bot';
+            
+            // Guardar cualquier dato adicional del contexto
+            if (data.context) {
+              conversationContext = {
+                ...conversationContext,
+                ...data.context
+              };
+            }
 
+            resolve(data.text);
+          });
+        });
+
+        // Enviar respuesta al usuario
+        await flowDynamic(respuesta);
+
+        // Continuar escuchando sin reiniciar el flujo
+        return null;
+
+      } catch (error) {
+        console.error('Error en la conversación:', error);
+        
+        // Manejo elegante del error
+        const errorMessage = 'Disculpa, estoy teniendo dificultades. ¿Podrías repetir tu último mensaje?';
+        conversationContext.history.push({
+          bot: errorMessage,
+          timestamp: new Date().toISOString(),
+          error: true
+        });
+        
+        await flowDynamic(errorMessage);
+        return null;
+      }
+    }
+  );
+
+// Inicialización del chatbot con saludo inicial
+const flowPrincipal = addKeyword(['hola', 'hi', 'buenos días', 'buenas tardes'])
+  .addAction(async (_, { flowDynamic }) => {
+    conversationContext = {
+      history: [],
+      lastInteraction: null,
+      userData: {},
+      startedAt: new Date().toISOString()
+    };
+    
+    await flowDynamic('🙌 ¡Hola! Bienvenido/a. ¿En qué puedo ayudarte hoy?');
+  })
+  .addAction(
+    async (ctx, { gotoFlow }) => {
+      // Retornar explícitamente la función gotoFlow
+      return gotoFlow(chatHandler);
+    }
+  );
      
       const main = async () => {
         const adapterDB = new MockAdapter()
         //const adapterDB = new Mysqladater()
-        const adapterFlow = createFlow([flowPrincipal])
+        const adapterFlow = createFlow([flowPrincipal, chatHandler])
         const adapterProvider = createProvider(BaileysProvider)
         
         createBot({

@@ -5,7 +5,10 @@ var mysql = require('mysql');
 class mysql2{
     db
     listHistory = []
-    credentials = { host: 'localhost', user: 'root', database:'whattsapp_rest' , password: '' }
+    credentials = { host: 'localhost', user: 'root', database:'whattsapp_rest' , password: '',authPlugins: {
+        caching_sha2_password: true, // Habilita el plugin de autenticación caching_sha2_password
+      },
+       }
 
     
 

@@ -25,9 +25,10 @@
         "google-spreadsheet": "^4.1.1",
         "googleapis": "^105.0.0",
         "mysql": "^2.18.1",
-        "mysql2": "^3.9.7",
+        "mysql2": "^3.13.0",
         "nodemon": "^3.1.0",
         "sequelize": "^6.37.3",
+        "socket.io-client": "^4.8.1",
         "wa-sticker-formatter": "4.4.4"
     },
     "devDependencies": {
